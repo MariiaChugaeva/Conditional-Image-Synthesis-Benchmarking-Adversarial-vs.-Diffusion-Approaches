@@ -146,7 +146,6 @@ display_experiment_samples(trainer, "Label Smoothing")
 ├── ConditionalDiffusion.ipynb      # DDPM-style conditional diffusion
 ├── ConditionalGanStabilization.ipynb # cDCGAN with stabilization techniques
 ├── ConditionalGanBaseline.ipynb   # Minimal cDCGAN baseline
-├── ConditionalGan.ipynb          # Starter cDCGAN
 ├── assets/                        # Images for README
 │   ├── training_data.png
 │   ├── diffusion_loss.png
