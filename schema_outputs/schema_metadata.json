@@ -1,0 +1,32 @@
+{
+  "checkpoint_path": "models\\conditional_diffusion_improved_final.pt",
+  "image_shape": [
+    1,
+    28,
+    28
+  ],
+  "sample_idx": 7,
+  "label_id": 6,
+  "label_name": "Shirt",
+  "timestep_visualized": 700,
+  "diffusion_timesteps": 1000,
+  "schedule": "cosine",
+  "guidance_scale": 1.0,
+  "null_label": 10,
+  "formulas": {
+    "forward": "x_t = sqrt(alpha_bar_t) * x0 + sqrt(1 - alpha_bar_t) * epsilon",
+    "x0_from_eps": "x0_hat = (x_t - sqrt(1-alpha_bar_t) * eps_theta) / sqrt(alpha_bar_t)",
+    "cfg": "eps = eps_u + w * (eps_c - eps_u)",
+    "ddpm_mean": "mu_t = coef1 * x0_hat + coef2 * x_t"
+  },
+  "outputs": {
+    "x0_real": "schema_outputs\\x0_real.png",
+    "xt_noised": "schema_outputs\\xt_t700.png",
+    "eps_true": "schema_outputs\\eps_true_t700.png",
+    "eps_pred": "schema_outputs\\eps_pred_t700.png",
+    "x0_hat": "schema_outputs\\x0_hat_t700.png",
+    "xt_minus_1": "schema_outputs\\xt_minus_1_t700.png"
+  },
+  "reverse_trajectory_panel": "schema_outputs\\reverse_trajectory_panel.png",
+  "composite_schema": "schema_outputs\\schema_composite_forward_reverse.png"
+}
