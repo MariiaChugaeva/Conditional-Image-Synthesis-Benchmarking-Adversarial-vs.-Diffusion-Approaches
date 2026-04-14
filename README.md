@@ -186,14 +186,11 @@ pip install jupyter ipywidgets
 1. Open the notebook you want to run.
 2. Execute cells from top to bottom.
 3. Allow the notebook to download the dataset automatically if needed.
-4. Use the saved figures in `report/assets/` when updating the report or documentation.
 
 ---
 
 ## Code and Models
 
-- Report source: `report/main.tex`
-- Report build notes: `report/README.md`
 - Kaggle models: [gans-and-diffusions](https://www.kaggle.com/models/meldilen/gans-and-diffusions/)
 - Repository: [GitHub Repository](https://github.com/MariiaChugaeva/Conditional-Image-Synthesis-Benchmarking-Adversarial-vs.-Diffusion-Approaches)
 
