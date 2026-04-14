@@ -1,10 +1,8 @@
 # Conditional Image Synthesis: Benchmarking Adversarial vs. Diffusion Approaches
 
-A comparative study of **conditional image generation** on Fashion-MNIST using two paradigms: **Conditional GANs** (adversarial) and **Conditional Diffusion Models** (denoising). Both approaches generate class-conditioned fashion item images (T-shirts, trousers, dresses, etc.) from label prompts.
+A comparative study of conditional image generation with two paradigms: conditional GANs and conditional diffusion models. The main benchmark is on Fashion-MNIST, and the project also includes a qualitative CIFAR-10 adaptation of the diffusion pipeline.
 
-![Training Data Sample](assets/training_data.png)
-
-*Fashion-MNIST training data sample (10 classes: T-shirt/top, Trouser, Pullover, Dress, Coat, Sandal, Shirt, Sneaker, Bag, Ankle boot)*
+![Final Fashion-MNIST diffusion samples](assets/diffusion_samples_final.png)
 
 ---
 
@@ -12,75 +10,153 @@ A comparative study of **conditional image generation** on Fashion-MNIST using t
 
 - [Overview](#overview)
 - [Notebooks](#notebooks)
-- [Approach Comparison](#approach-comparison)
-- [Installation](#installation)
-- [Usage](#usage)
+- [Configurations](#configurations)
 - [Results](#results)
 - [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Code and Models](#code-and-models)
+- [References](#references)
 
 ---
 
 ## Overview
 
-This project implements and benchmarks two state-of-the-art conditional image synthesis methods:
+This repository accompanies the report in `report/main.tex` and studies two complementary questions:
 
-| Approach | Notebook | Key Idea |
-|----------|----------|----------|
-| **Conditional GAN** | `ConditionalGanStabilization.ipynb` | Generator–Discriminator adversarial training with stabilization techniques |
-| **Conditional Diffusion** | `ConditionalDiffusion.ipynb` | DDPM-style denoising with U-Net and class conditioning |
+1. How label embedding size affects mode collapse in conditional GANs.
+2. How classifier-free guidance behaves in diffusion models on a simple low-resolution dataset.
 
-Both models use **Fashion-MNIST** (28×28 grayscale, 10 classes) for efficient experimentation and comparison.
+The report’s main conclusions are:
+
+- The GAN ablation shows a clear U-shaped relationship between label embedding dimension and generation quality.
+- The best GAN configuration on Fashion-MNIST outperforms the best tested diffusion configuration on FID, recall, and conditional accuracy.
+- For this dataset, stronger classifier-free guidance degrades diffusion performance instead of improving it.
+- The CIFAR-10 experiment shows that moving from grayscale `28x28` images to RGB `32x32` images requires a more expressive conditional U-Net and longer training.
 
 ---
 
 ## Notebooks
 
-### 1. Conditional Diffusion (`ConditionalDiffusion.ipynb`)
+### 1. Baseline Conditional Diffusion (`ConditionalDiffusion.ipynb`)
 
-Implements a **DDPM-style conditional diffusion model** for Fashion-MNIST:
+Implements a conditional DDPM-style model for Fashion-MNIST with:
 
-- **SimpleDiffusion**: β schedule (1e-4 → 0.02), forward/reverse process, iterative sampling
-- **U-Net backbone**: ResNet blocks, sinusoidal time embeddings, linear/self-attention
-- **Class conditioning**: Label embedding added to time embeddings
-- **Training**: Smooth L1 loss, gradient clipping (1.0) for stability
-- **Visualization**: Loss history, generated samples, conditioning debug
+- a U-Net backbone
+- sinusoidal timestep embeddings
+- class conditioning through learned embeddings
+- denoising training and iterative sampling
 
-![Diffusion Training Loss](assets/diffusion_loss.png)
+### 2. CIFAR-10 Conditional Diffusion (`cifar10diffusion.ipynb`)
 
-![Diffusion Generated Samples](assets/diffusion_samples.png)
+Adapts the diffusion pipeline to CIFAR-10 using:
 
-### 2. Conditional GAN Stabilization (`ConditionalGanStabilization.ipynb`)
+- RGB `32x32` inputs and outputs
+- residual blocks with group normalization and SiLU
+- self-attention at `16x16` and in the bottleneck
+- cosine schedule, EMA, mixed precision, and classifier-free guidance training
 
-Implements a **conditional GAN** with systematic stabilization and tuning:
+### 3. Schema / Visualization Notebook (`ConditionalDiffusionSchemaOutputs.ipynb`)
 
-- **Architecture**: Generator (100-dim noise + labels → 28×28), Discriminator (image + labels → logits)
-- **Stabilization techniques**:
-  - **Label smoothing** (0.9/0.1 instead of 1/0)
-  - **Learning rate tuning** (e.g., slower D, faster G)
-  - **Gradient penalty** (WGAN-GP style)
-  - **Instance noise** (optional)
-- **Analysis**: G/D loss comparison, G/D balance ratio, sample diversity debug
+Generates supporting visuals used for the architecture figure and report illustrations.
 
-![GAN Baseline Samples](assets/gan_baseline.png)
+### 4. Report Notebooks
 
-![GAN Experiment Comparison](assets/gan_comparison.png)
-
-### 3. Supporting Notebooks
-
-- **`ConditionalGanBaseline.ipynb`**: Minimal cGAN baseline
-- **`ConditionalGan.ipynb`**: Alternative cGAN implementation
+- `report/ConditionalDiffusion.ipynb`: report copy of the baseline Fashion-MNIST diffusion notebook
+- `report/ConditionalDiffusionImproved.ipynb`: improved Fashion-MNIST diffusion implementation described in the report
 
 ---
 
-## Approach Comparison
+## Configurations
 
-| Aspect | Conditional GAN | Conditional Diffusion |
-|--------|----------------|------------------------|
-| **Training** | Min-max game (G vs D) | Denoising objective (predict noise) |
-| **Sampling** | Single forward pass | Iterative (1000 steps) |
-| **Stability** | Mode collapse, vanishing gradients | Generally more stable |
-| **Speed** | Fast inference | Slower inference |
-| **Quality** | Can be sharp but brittle | Often smoother, more diverse |
+### Conditional GAN
+
+The report studies a DCGAN-style conditional GAN where:
+
+- noise dimension is fixed at `256`
+- label embedding dimension varies in `{8, 16, 32, 64, 256}`
+- training uses Adam and gradient penalty
+- the goal is to identify when class embeddings become so expressive that the generator ignores noise
+
+### Diffusion on Fashion-MNIST
+
+The improved diffusion setup includes:
+
+- cosine noise schedule
+- EMA of model weights
+- classifier-free guidance with label dropout
+- DDIM sampling
+- a conditional U-Net with residual blocks and attention
+
+### Diffusion on CIFAR-10
+
+Compared with the Fashion-MNIST version, the CIFAR-10 model is adapted by:
+
+- switching from grayscale to RGB
+- using a clean `32 -> 16 -> 8 -> 4` spatial pyramid
+- widening the denoiser with `base_channels=128` and channel multipliers `(1, 2, 2, 4)`
+- using a more conservative long-run training recipe for a harder dataset
+
+---
+
+## Results
+
+### GAN Ablation
+
+The best fixed GAN configuration achieves:
+
+- `FID = 0.66`
+- `Recall = 0.915`
+- `Conditional accuracy = 83.3%`
+
+The key observation is that `embed_dim=16-32` works best, while larger embeddings trigger mode collapse.
+
+![FID vs embedding dimension](assets/fid_vs_embed_dim.png)
+
+### Diffusion on Fashion-MNIST
+
+The best tested guidance scale is `w=1.0`, which achieves:
+
+- `FID = 1.69`
+- `Recall = 0.896`
+- `Conditional accuracy = 72.6%`
+
+Higher guidance values worsen FID and conditional accuracy on this dataset.
+
+![FID vs guidance scale](assets/diffusion_fid_vs_guidance.png)
+
+### Qualitative Comparison
+
+The report shows that both models produce recognizable Fashion-MNIST outputs, but the GAN remains stronger quantitatively in this setting.
+
+![Generated Fashion-MNIST samples](assets/gan_samples.png)
+
+### CIFAR-10 Adaptation
+
+The CIFAR-10 diffusion experiment is included as a qualitative transfer study. The final sample grid is cleaner and more class-consistent than early snapshots, but the outputs remain softer than Fashion-MNIST silhouettes because CIFAR-10 is more complex.
+
+![Final CIFAR-10 samples](assets/final_samples.png)
+
+---
+
+## Project Structure
+
+```text
+.
+├── assets
+├── data
+├── models
+├── schema_outputs
+├── ConditionalDiffusion.ipynb
+├── ConditionalDiffusionSchemaOutputs.ipynb
+├── ConditionalDiffusionSchemaOutputs.ipynb
+├── ConditionalGanBaseline.ipynb
+├── ConditionalGanStabilization.ipynb
+├── Evaluation.ipynb
+├── README.md
+├── cifar10diffusion.ipynb
+└── diffusion_utils.py
+```
 
 ---
 
@@ -89,19 +165,17 @@ Implements a **conditional GAN** with systematic stabilization and tuning:
 ### Requirements
 
 - Python 3.8+
-- PyTorch 2.x (with CUDA for GPU)
-- torchvision, matplotlib, numpy, tqdm, einops
+- PyTorch
+- torchvision
+- matplotlib
+- numpy
+- tqdm
+- Jupyter / ipywidgets
 
 ### Setup
 
 ```bash
-pip install torch torchvision
-pip install matplotlib numpy tqdm einops
-```
-
-For Jupyter:
-
-```bash
+pip install torch torchvision matplotlib numpy tqdm
 pip install jupyter ipywidgets
 ```
 
@@ -109,57 +183,27 @@ pip install jupyter ipywidgets
 
 ## Usage
 
-1. **Clone or download** this repository.
-2. **Open** `ConditionalDiffusion.ipynb` or `ConditionalGanStabilization.ipynb` in Jupyter.
-3. **Run all cells** in order. Data will be downloaded automatically (`./data`).
-4. **Training**: Default 10 epochs for diffusion; configurable for GAN experiments.
-5. **Generation**: Use the provided functions to generate samples for given class labels.
-
-### Example: Generate with Diffusion
-
-```python
-# After training
-display_generated_samples(model, diffusion, title="Conditional Diffusion - Generated Samples")
-```
-
-### Example: Compare GAN Experiments
-
-```python
-compare_experiments(histories, labels)
-display_experiment_samples(trainer, "Label Smoothing")
-```
+1. Open the notebook you want to run.
+2. Execute cells from top to bottom.
+3. Allow the notebook to download the dataset automatically if needed.
+4. Use the saved figures in `report/assets/` when updating the report or documentation.
 
 ---
 
-## Results
+## Code and Models
 
-- **Diffusion**: Produces recognizable class-conditioned fashion items; training loss decreases smoothly with gradient clipping.
-- **GAN**: Baseline can suffer from D dominance; label smoothing and gradient penalty improve balance and sample quality.
-- **Conditioning**: Both models respect class labels; debug utilities verify same-noise/different-labels behavior.
-
----
-
-## Project Structure
-
-```
-.
-├── ConditionalDiffusion.ipynb      # DDPM-style conditional diffusion
-├── ConditionalGanStabilization.ipynb # cDCGAN with stabilization techniques
-├── ConditionalGanBaseline.ipynb   # Minimal cDCGAN baseline
-├── assets/                        # Images for README
-│   ├── training_data.png
-│   ├── diffusion_loss.png
-│   ├── diffusion_samples.png
-│   ├── gan_baseline.png
-│   └── gan_comparison.png
-└── README.md
-```
+- Report source: `report/main.tex`
+- Report build notes: `report/README.md`
+- Kaggle models: [gans-and-diffusions](https://www.kaggle.com/models/meldilen/gans-and-diffusions/)
+- Repository: [GitHub Repository](https://github.com/MariiaChugaeva/Conditional-Image-Synthesis-Benchmarking-Adversarial-vs.-Diffusion-Approaches)
 
 ---
 
 ## References
 
-- **DDPM**: Ho et al., "Denoising Diffusion Probabilistic Models" (NeurIPS 2020)
-- **cGAN**: Mirza & Osindero, "Conditional Generative Adversarial Nets" (2014)
-- **WGAN-GP**: Gulrajani et al., "Improved Training of Wasserstein GANs" (2017)
-- **Fashion-MNIST**: Xiao et al., "Fashion-MNIST: a Novel Image Dataset for Benchmarking ML Algorithms" (2017)
+- Ho et al., *Denoising Diffusion Probabilistic Models*, NeurIPS 2020
+- Ho and Salimans, *Classifier-Free Diffusion Guidance*, 2022
+- Nichol and Dhariwal, *Improved Denoising Diffusion Probabilistic Models*, ICML 2021
+- Mirza and Osindero, *Conditional Generative Adversarial Nets*, 2014
+- Gulrajani et al., *Improved Training of Wasserstein GANs*, NeurIPS 2017
+- Xiao et al., *Fashion-MNIST*, 2017
